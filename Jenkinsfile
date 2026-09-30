@@ -4,7 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME     = 'customer-portal'
         CONTAINER_NAME = 'customer-portal'
-        HOST_PORT      = '8085'   // change if this port is already in use
+        HOST_PORT      = '8091'   // change if this port is already in use
         ADMIN_EMAIL    = 'admin@example.com'   // register with this email to become admin
     }
 
