@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer Portal</title>
+<style>
+:root{--pri:#4f46e5;--pri2:#7c3aed;--bg:#f5f6fb;--txt:#1e2235;--mut:#6b7280;--ok:#16a34a;--bad:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;flex-direction:column}
+a{color:inherit;text-decoration:none}
+header{background:#fff;box-shadow:0 1px 6px #0001;position:sticky;top:0;z-index:5}
+.nav{max-width:1080px;margin:auto;padding:14px 20px;display:flex;align-items:center;gap:20px}
+.logo{font-weight:800;font-size:20px;color:var(--pri)}
+.nav .sp{flex:1}.nav a.l{color:var(--mut);font-size:15px}.nav a.l:hover{color:var(--pri)}
+main{flex:1;width:100%;max-width:1080px;margin:auto;padding:24px 20px}
+.btn{display:inline-block;background:var(--pri);color:#fff;border:0;padding:11px 22px;border-radius:8px;font-weight:600;cursor:pointer;font-size:15px}
+.btn:hover{opacity:.92}.btn.line{background:#fff;color:var(--pri);border:1px solid var(--pri)}.btn.bad{background:var(--bad)}.btn.sm{padding:6px 12px;font-size:13px}
+.hero{background:linear-gradient(120deg,var(--pri),var(--pri2));color:#fff;border-radius:16px;padding:64px 36px;text-align:center}
+.hero h1{font-size:38px;margin:0 0 12px}.hero p{font-size:18px;opacity:.92;margin:0 0 26px}
+.hero .btn{background:#fff;color:var(--pri);margin:0 6px}.hero .btn.line{background:transparent;color:#fff;border-color:#fff}
+.feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:28px}
+.feat{background:#fff;border-radius:12px;padding:24px;text-align:center;box-shadow:0 1px 4px #0001}.feat span{font-size:38px}
+.feat h3{margin:10px 0 6px}.feat p{color:var(--mut);font-size:14px;margin:0}
+.card{background:#fff;border-radius:14px;padding:28px;box-shadow:0 1px 6px #0001}
+.narrow{max-width:440px;margin:20px auto}
+h2{margin-top:0}label{font-size:13px;color:var(--mut);font-weight:600}
+input,textarea{width:100%;padding:10px 12px;margin:5px 0 14px;border:1px solid #d1d5db;border-radius:8px;font:inherit}
+input:focus,textarea:focus{outline:2px solid #c7d2fe;border-color:var(--pri)}
+.msg{font-size:14px;margin:6px 0}.err{color:var(--bad)}.ok{color:var(--ok)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:18px 0}
+.stat{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px #0001}.stat small{color:var(--mut)}.stat b{display:block;font-size:18px;margin-top:4px;word-break:break-all}
+.avatar{width:64px;height:64px;border-radius:50%;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}
+.top{display:flex;align-items:center;gap:16px}
+table{width:100%;border-collapse:collapse}th,td{padding:11px 8px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:14px}th{color:var(--mut)}
+.badge{background:#e0e7ff;color:var(--pri);padding:2px 8px;border-radius:10px;font-size:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media(max-width:640px){.two{grid-template-columns:1fr}.hero h1{font-size:28px}}
+footer{text-align:center;color:var(--mut);font-size:13px;padding:20px}
+</style>
+</head>
+<body>
+<header><div class="nav" id="nav"></div></header>
+<main id="app"></main>
+<footer>&copy; 2026 Customer Portal &middot; <a href="/health">System status</a></footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let token='',me=null;
+try{token=localStorage.getItem('token')||''}catch(e){}
+const setToken=t=>{token=t;try{t?localStorage.setItem('token',t):localStorage.removeItem('token')}catch(e){}};
+
+async function api(path,method='GET',body){
+  const r=await fetch(path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined});
+  let data=null;try{data=await r.json()}catch(e){}
+  return{ok:r.ok,status:r.status,data};
+}
+const errText=d=>d?(d.errors||[d.error]).join(', '):'Something went wrong';
+const go=h=>location.hash=h;
+
+function renderNav(){
+  $('nav').innerHTML=`<a class="logo" href="#/">&#128100; Customer Portal</a><a class="l" href="#/">Home</a><span class="sp"></span>`+
+   (me?`<a class="l" href="#/dashboard">Dashboard</a>${me.isAdmin?'<a class="l" href="#/admin">Admin</a>':''}<a class="btn line sm" href="#" onclick="logout();return false">Logout</a>`
+      :`<a class="l" href="#/login">Login</a><a class="btn sm" href="#/register">Register</a>`);
+}
+
+const views={
+  home:()=>`<div class="hero"><h1>Your account, all in one place</h1><p>Register in seconds, sign in securely and manage your details anytime.</p>
+    ${me?'<a class="btn" href="#/dashboard">Go to Dashboard</a>':'<a class="btn" href="#/register">Create Account</a><a class="btn line" href="#/login">Login</a>'}</div>
+    <div class="feats"><div class="feat"><span>&#128274;</span><h3>Secure</h3><p>Passwords are hashed and never shown or stored in plain text.</p></div>
+    <div class="feat"><span>&#9997;</span><h3>Easy updates</h3><p>Change your phone, address or email whenever you need.</p></div>
+    <div class="feat"><span>&#9889;</span><h3>Fast</h3><p>Simple sign-up and instant access to your profile.</p></div></div>`,
+
+  register:()=>`<form class="card narrow" onsubmit="doRegister(event)"><h2>Create your account</h2>
+    <label>Full name</label><input id="name" required minlength="2">
+    <label>Email</label><input id="email" type="email" required>
+    <div class="two"><div><label>Phone (10 digits)</label><input id="phone" pattern="[0-9]{10}"></div><div></div></div>
+    <label>Address</label><textarea id="address" rows="2"></textarea>
+    <div class="two"><div><label>Password (min 8)</label><input id="password" type="password" minlength="8" required></div>
+    <div><label>Confirm password</label><input id="confirm" type="password" required></div></div>
+    <div class="msg err" id="msg"></div><button class="btn" style="width:100%">Register</button>
+    <p style="text-align:center;font-size:14px">Already registered? <a href="#/login" style="color:var(--pri)">Login</a></p></form>`,
+
+  login:()=>`<form class="card narrow" onsubmit="doLogin(event)"><h2>Welcome back</h2>
+    <label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required>
+    <div class="msg err" id="msg"></div><button class="btn" style="width:100%">Login</button>
+    <p style="text-align:center;font-size:14px">New here? <a href="#/register" style="color:var(--pri)">Create an account</a></p></form>`,
+
+  dashboard:()=>`<div class="top"><div class="avatar">${esc(me.name[0].toUpperCase())}</div><div><h2 style="margin:0">Hello, ${esc(me.name)}</h2><small style="color:var(--mut)">${me.isAdmin?'<span class="badge">Admin</span> ':''}Welcome to your dashboard</small></div></div>
+    <div class="stats"><div class="stat"><small>Customer ID</small><b>#${me.id}</b></div><div class="stat"><small>Email</small><b>${esc(me.email)}</b></div>
+    <div class="stat"><small>Member since</small><b>${new Date(me.registeredAt).toLocaleDateString()}</b></div></div>
+    <form class="card" onsubmit="doUpdate(event)"><h2>My details</h2><div class="two">
+    <div><label>Full name</label><input id="name" value="${esc(me.name)}" required></div><div><label>Email</label><input id="email" type="email" value="${esc(me.email)}" required></div>
+    <div><label>Phone</label><input id="phone" value="${esc(me.phone)}" pattern="[0-9]{10}"></div><div><label>Address</label><input id="address" value="${esc(me.address)}"></div></div>
+    <div class="msg" id="msg"></div><button class="btn">Save changes</button>
+    <button type="button" class="btn bad" style="float:right" onclick="doDelete()">Delete account</button></form>`,
+
+  admin:()=>`<div class="card"><h2>All customers</h2><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th></tr></thead><tbody id="rows"><tr><td colspan="5">Loading...</td></tr></tbody></table></div>`,
+};
+
+async function route(){
+  const page=(location.hash||'#/').split('/')[1]||'home';
+  if(token&&!me){const r=await api('/api/me');if(r.ok)me=r.data;else setToken('')}
+  renderNav();
+  const needAuth=['dashboard','admin'].includes(page);
+  if(needAuth&&!me)return go('#/login');
+  if(page==='admin'&&!me.isAdmin){$('app').innerHTML='<div class="card narrow"><h2>Access denied</h2><p>This page is for administrators only.</p></div>';return}
+  if((page==='login'||page==='register')&&me)return go('#/dashboard');
+  $('app').innerHTML=(views[page]||views.home)();
+  if(page==='admin'){const r=await api('/api/customers');
+    $('rows').innerHTML=r.ok?r.data.map(c=>`<tr><td>${c.id}</td><td>${esc(c.name)}</td><td>${esc(c.email)}</td><td>${esc(c.phone)||'-'}</td><td>${new Date(c.registeredAt).toLocaleDateString()}</td></tr>`).join(''):`<tr><td colspan="5">${esc(errText(r.data))}</td></tr>`}
+  window.scrollTo(0,0);
+}
+
+async function doRegister(e){e.preventDefault();
+  if($('password').value!==$('confirm').value){$('msg').textContent='Passwords do not match';return}
+  const b={name:$('name').value,email:$('email').value,password:$('password').value};
+  if($('phone').value)b.phone=$('phone').value;if($('address').value)b.address=$('address').value;
+  const r=await api('/api/customers/register','POST',b);
+  if(!r.ok){$('msg').textContent=errText(r.data);return}
+  await login(b.email,b.password);}
+async function doLogin(e){e.preventDefault();
+  const err=await login($('email').value,$('password').value);if(err)$('msg').textContent=err}
+async function login(email,password){
+  const r=await api('/api/auth/login','POST',{email,password});
+  if(!r.ok)return errText(r.data);
+  setToken(r.data.token);me=r.data.customer;go('#/dashboard');route()}
+async function logout(){await api('/api/auth/logout','POST');setToken('');me=null;go('#/');route()}
+async function doUpdate(e){e.preventDefault();
+  const r=await api('/api/customers/'+me.id,'PUT',{name:$('name').value,email:$('email').value,phone:$('phone').value||undefined,address:$('address').value});
+  $('msg').className='msg '+(r.ok?'ok':'err');
+  if(r.ok){me={...me,...r.data};renderNav();$('msg').textContent='Details updated.'}else $('msg').textContent=errText(r.data)}
+async function doDelete(){
+  if(!confirm('Delete your account permanently?'))return;
+  const r=await api('/api/customers/'+me.id,'DELETE');
+  if(r.ok||r.status===204){setToken('');me=null;go('#/');route()}}
+
+window.addEventListener('hashchange',route);
+route();
+</script>
+</body>
+</html>
